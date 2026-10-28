@@ -258,6 +258,7 @@ curl -i -b cookies.txt -X POST \
 | `pnpm lint:fix`       | Executa o ESLint com correção automática                   |
 | `pnpm format`         | Formata os arquivos com Prettier                           |
 | `pnpm format:check`   | Verifica a formatação                                      |
+| `pnpm audit:prod`     | Audita vulnerabilidades nas dependências de produção       |
 | `pnpm typecheck`      | Executa o TypeScript sem emitir arquivos                   |
 | `pnpm check`          | Executa typecheck, lint, formatação e testes com cobertura |
 | `pnpm db:generate`    | Gera o Prisma Client                                       |
@@ -334,12 +335,13 @@ docker exec bootcamp-treinos-db psql -U postgres -d postgres \
 O workflow `.github/workflows/ci.yml` executa em `push`, `pull_request` e execução manual:
 
 1. Instalação com `pnpm install --frozen-lockfile`.
-2. Geração e validação do Prisma Client.
-3. Aplicação e verificação das migrations.
-4. Typecheck, ESLint e Prettier.
-5. Testes com cobertura usando PostgreSQL 16 como serviço.
-6. Upload do relatório de cobertura como artifact.
-7. Build da aplicação.
+2. Auditoria das dependências de produção.
+3. Geração e validação do Prisma Client.
+4. Aplicação e verificação das migrations.
+5. Typecheck, ESLint e Prettier.
+6. Testes com cobertura usando PostgreSQL 16 como serviço.
+7. Upload do relatório de cobertura como artifact.
+8. Build da aplicação.
 
 O CI usa credenciais e segredo exclusivos para teste. Em produção, utilize secrets reais.
 

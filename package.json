@@ -28,6 +28,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown",
+    "audit:prod": "pnpm audit --prod",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -44,7 +45,7 @@
     "node": "24.x"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
+    "@eslint/js": "9.39.2",
     "@types/node": "^24.19.2",
     "@vitest/coverage-v8": "^5.0.5",
     "eslint": "9.39.2",
@@ -59,16 +60,15 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
-    "@fastify/cors": "11.2.0",
-    "@fastify/swagger": "9.7.0",
-    "@fastify/swagger-ui": "5.2.5",
+    "@fastify/cors": "11.3.1",
+    "@fastify/swagger": "9.9.2",
     "@prisma/adapter-pg": "7.4.0",
     "@prisma/client": "7.4.0",
-    "@scalar/fastify-api-reference": "1.44.20",
-    "better-auth": "1.4.21",
+    "@scalar/fastify-api-reference": "1.76.0",
+    "better-auth": "1.7.14",
     "dotenv": "17.3.1",
-    "fastify": "5.7.4",
+    "fastify": "5.12.7",
     "fastify-type-provider-zod": "6.1.0",
-    "zod": "4.3.6"
+    "zod": "4.6.7"
   }
 }
