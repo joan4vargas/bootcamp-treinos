@@ -289,4 +289,40 @@ describe("workout plans", () => {
 
     expect([plans, days, exercises]).toEqual([0, 0, 0]);
   });
+
+  it("remove planos, dias e exercícios ao excluir o usuário", async () => {
+    const plan = await createPlan(app, cookie);
+    const day = firstWorkoutDay(plan);
+    const user = await prisma.user.findUniqueOrThrow({
+      where: {
+        email: "plans@example.com",
+      },
+    });
+
+    await prisma.user.delete({
+      where: {
+        id: user.id,
+      },
+    });
+
+    const [plans, days, exercises] = await prisma.$transaction([
+      prisma.workoutPlan.count({
+        where: {
+          id: plan.id,
+        },
+      }),
+      prisma.workoutDay.count({
+        where: {
+          id: day.id,
+        },
+      }),
+      prisma.workoutExercise.count({
+        where: {
+          workoutDayId: day.id,
+        },
+      }),
+    ]);
+
+    expect([plans, days, exercises]).toEqual([0, 0, 0]);
+  });
 });

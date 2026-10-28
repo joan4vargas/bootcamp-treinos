@@ -30,3 +30,5 @@ export const adminDatabaseUrl = adminUrl.toString();
 
 process.env.DATABASE_URL = testDatabaseUrl;
 process.env.BETTER_AUTH_URL ??= "http://localhost:3000";
+process.env.RATE_LIMIT_MAX ??= "10000";
+process.env.AUTH_RATE_LIMIT_MAX ??= "10000";

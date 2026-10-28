@@ -1,6 +1,8 @@
 import "dotenv/config";
 
 import fastifyCors from "@fastify/cors";
+import fastifyHelmet from "@fastify/helmet";
+import fastifyRateLimit from "@fastify/rate-limit";
 import fastifySwagger from "@fastify/swagger";
 import fastifyApiReference from "@scalar/fastify-api-reference";
 import Fastify, { type FastifyServerOptions } from "fastify";
@@ -13,14 +15,55 @@ import {
 import { z } from "zod";
 
 import { auth } from "./lib/auth.js";
+import {
+  allowedOrigins,
+  authRateLimit as defaultAuthRateLimit,
+  rateLimit as defaultRateLimit,
+  trustProxy,
+} from "./lib/config.js";
 import { workoutDaysRoutes } from "./routes/workout-days.js";
 import { workoutExercisesRoutes } from "./routes/workout-exercises.js";
 import { workoutPlansRoutes } from "./routes/workout-plans.js";
 
-export async function buildApp(options: FastifyServerOptions = {}) {
+type RateLimitOptions = {
+  max?: number;
+  timeWindow?: string | number;
+};
+
+export interface BuildAppOptions extends FastifyServerOptions {
+  authRateLimit?: RateLimitOptions;
+  rateLimit?: RateLimitOptions;
+}
+
+export async function buildApp(options: BuildAppOptions = {}) {
+  const {
+    authRateLimit: authRateLimitOverride,
+    rateLimit: rateLimitOverride,
+    ...fastifyOptions
+  } = options;
   const app = Fastify({
     logger: true,
-    ...options,
+    trustProxy,
+    ...fastifyOptions,
+  });
+  const globalRateLimit = {
+    ...defaultRateLimit,
+    ...rateLimitOverride,
+  };
+  const authRateLimitOptions = {
+    ...defaultAuthRateLimit,
+    ...authRateLimitOverride,
+  };
+
+  await app.register(fastifyHelmet, {
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  });
+
+  await app.register(fastifyRateLimit, {
+    global: true,
+    max: globalRateLimit.max,
+    timeWindow: globalRateLimit.timeWindow,
   });
 
   await app.register(fastifySwagger, {
@@ -41,7 +84,7 @@ export async function buildApp(options: FastifyServerOptions = {}) {
   });
 
   await app.register(fastifyCors, {
-    origin: ["http://localhost:3000"],
+    origin: allowedOrigins,
     credentials: true,
     exposedHeaders: ["X-Total-Count"],
   });
@@ -109,12 +152,34 @@ export async function buildApp(options: FastifyServerOptions = {}) {
     },
   });
 
+  app.withTypeProvider<ZodTypeProvider>().route({
+    method: "GET",
+    url: "/health",
+    schema: {
+      description: "Verifica a saúde da API",
+      tags: ["health"],
+      response: {
+        200: z.object({
+          status: z.literal("ok"),
+        }),
+      },
+    },
+    handler: () => {
+      return {
+        status: "ok" as const,
+      };
+    },
+  });
+
   // Register authentication endpoint
   app.route({
     method: ["GET", "POST"],
     url: "/api/auth/*",
     schema: {
       hide: true,
+    },
+    config: {
+      rateLimit: authRateLimitOptions,
     },
     async handler(request, reply) {
       try {
@@ -127,6 +192,11 @@ export async function buildApp(options: FastifyServerOptions = {}) {
         Object.entries(request.headers).forEach(([key, value]) => {
           if (value) headers.append(key, value.toString());
         });
+
+        // O Fastify já resolve o IP real (respeitando TRUST_PROXY quando habilitado).
+        // Sobrescrevemos qualquer X-Forwarded-For enviado pelo cliente para que o
+        // rate limit interno do better-auth use uma chave confiável.
+        headers.set("x-forwarded-for", request.ip);
 
         const req = new Request(url.toString(), {
           method: request.method,

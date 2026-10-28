@@ -11,6 +11,7 @@ import {
   vi,
 } from "vitest";
 
+import { buildApp } from "../src/app.js";
 import { auth } from "../src/lib/auth.js";
 import { prisma } from "../src/lib/db.js";
 import { createPlan, createTestApp, resetDatabase, signUp } from "./helpers.js";
@@ -203,6 +204,51 @@ describe("auth, documentation and CORS", () => {
     });
   });
 
+  it("expõe healthcheck com headers de segurança", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/health",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ status: "ok" });
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["x-frame-options"]).toBeDefined();
+  });
+
+  it("aplica rate limit nas rotas de autenticação", async () => {
+    const limitedApp = await buildApp({
+      logger: false,
+      authRateLimit: {
+        max: 2,
+        timeWindow: "1 minute",
+      },
+    });
+    await limitedApp.ready();
+
+    try {
+      const first = await limitedApp.inject({
+        method: "GET",
+        url: "/api/auth/get-session",
+      });
+      const second = await limitedApp.inject({
+        method: "GET",
+        url: "/api/auth/get-session",
+      });
+      const third = await limitedApp.inject({
+        method: "GET",
+        url: "/api/auth/get-session",
+      });
+
+      expect(first.statusCode).toBe(200);
+      expect(second.statusCode).toBe(200);
+      expect(third.statusCode).toBe(429);
+      expect(third.headers["retry-after"]).toBeDefined();
+    } finally {
+      await limitedApp.close();
+    }
+  });
+
   it("serve o Scalar em /docs", async () => {
     const redirectResponse = await app.inject({
       method: "GET",
@@ -239,6 +285,7 @@ describe("auth, documentation and CORS", () => {
     expect(Object.keys(schema.paths)).toEqual(
       expect.arrayContaining([
         "/",
+        "/health",
         "/workout-plans",
         "/workout-plans/{id}",
         "/workout-plans/{planId}/days",

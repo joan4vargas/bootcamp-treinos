@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+.git
+.github
+.vscode
+.env
+.env.*
+src/generated
+tests
+audit.json
+*.log

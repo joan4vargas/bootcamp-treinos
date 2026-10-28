@@ -1,5 +1,7 @@
 # Bootcamp Treinos API
 
+[![CI](https://github.com/joan4vargas/bootcamp-treinos/actions/workflows/ci.yml/badge.svg)](https://github.com/joan4vargas/bootcamp-treinos/actions/workflows/ci.yml)
+
 API REST para gerenciamento de planos de treino, construída com Node.js, TypeScript, Fastify, Prisma e better-auth.
 
 ## Stack
@@ -12,7 +14,7 @@ API REST para gerenciamento de planos de treino, construída com Node.js, TypeSc
 | Fastify     | 5       |
 | Prisma      | 7       |
 | PostgreSQL  | 16      |
-| better-auth | 1.4     |
+| better-auth | 1.7     |
 | Zod         | 4       |
 | Vitest      | 5       |
 
@@ -67,17 +69,31 @@ A API estará disponível em `http://localhost:3000`.
 | Scalar                 | `http://localhost:3000/docs`                              |
 | OpenAPI principal      | `http://localhost:3000/swagger.json`                      |
 | OpenAPI do better-auth | `http://localhost:3000/api/auth/open-api/generate-schema` |
+| Healthcheck            | `http://localhost:3000/health`                            |
 
 A documentação do Scalar possui duas fontes: **Bootcamp Treinos API** e **Auth API**.
 
 ## Variáveis de ambiente
 
-| Variável             | Descrição                      | Exemplo                                                              |
-| -------------------- | ------------------------------ | -------------------------------------------------------------------- |
-| `PORT`               | Porta do servidor              | `3000`                                                               |
-| `DATABASE_URL`       | Conexão com o PostgreSQL       | `postgresql://postgres:password@localhost:5433/bootcamp-treinos-api` |
-| `BETTER_AUTH_SECRET` | Segredo usado pelo better-auth | valor aleatório de 32 bytes                                          |
-| `BETTER_AUTH_URL`    | URL base do better-auth        | `http://localhost:3000`                                              |
+| Variável                      | Descrição                          | Exemplo                                                              |
+| ----------------------------- | ---------------------------------- | -------------------------------------------------------------------- |
+| `HOST`                        | Interface de escuta                | `127.0.0.1` (container: `0.0.0.0`)                                   |
+| `PORT`                        | Porta do servidor                  | `3000`                                                               |
+| `DATABASE_URL`                | Conexão com o PostgreSQL           | `postgresql://postgres:password@localhost:5433/bootcamp-treinos-api` |
+| `BETTER_AUTH_SECRET`          | Segredo usado pelo better-auth     | valor aleatório de 32 bytes                                          |
+| `BETTER_AUTH_URL`             | URL base do better-auth            | `http://localhost:3000`                                              |
+| `CORS_ORIGINS`                | Origens permitidas no CORS         | `http://localhost:3000,https://app.example.com`                      |
+| `BETTER_AUTH_TRUSTED_ORIGINS` | Origens extras confiadas pelo auth | `https://app.example.com`                                            |
+| `RATE_LIMIT_MAX`              | Limite global por IP/minuto        | `100`                                                                |
+| `RATE_LIMIT_WINDOW`           | Janela do limite global            | `1 minute`                                                           |
+| `AUTH_RATE_LIMIT_MAX`         | Limite de auth por IP/minuto       | `20`                                                                 |
+| `AUTH_RATE_LIMIT_WINDOW`      | Janela do limite de auth           | `1 minute`                                                           |
+| `TRUST_PROXY`                 | Confia em `X-Forwarded-*`          | `false`                                                              |
+| `POSTGRES_USER`               | Usuário do Compose de produção     | `postgres`                                                           |
+| `POSTGRES_PASSWORD`           | Senha do Compose de produção       | valor forte e exclusivo                                              |
+| `POSTGRES_DB`                 | Banco do Compose de produção       | `bootcamp-treinos-api`                                               |
+
+`CORS_ORIGINS` e `BETTER_AUTH_TRUSTED_ORIGINS` aceitam listas separadas por vírgula. Se `CORS_ORIGINS` não for definido, a API usa `BETTER_AUTH_URL` como origem padrão. Wildcards não são aceitos com credenciais.
 
 O `docker-compose.yml` expõe o PostgreSQL em `127.0.0.1:5433` com o banco `bootcamp-treinos-api`.
 
@@ -90,6 +106,7 @@ src/
   lib/
     auth.ts               # Configuração do better-auth
     auth-session.ts       # Leitura da sessão a partir dos headers
+    config.ts             # CORS, rate limit e trust proxy
     db.ts                 # Cliente Prisma compartilhado
     workout-access.ts     # Verificação de propriedade de planos/dias/exercícios
   routes/
@@ -102,8 +119,12 @@ prisma/
   migrations/
 tests/
   helpers.ts
+  auth-docs-cors.test.ts
+  config.test.ts
   workout-plans.test.ts
   workout-days-exercises.test.ts
+Dockerfile
+docker-compose.prod.yml
 ```
 
 ## Modelo de dados
@@ -143,7 +164,16 @@ curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/sign-up/email \
   }'
 ```
 
-O header `Origin` é necessário porque o better-auth valida as origens confiáveis configuradas em `src/lib/auth.ts`.
+O header `Origin` é necessário porque o better-auth valida as origens confiáveis configuradas em `CORS_ORIGINS` (ou `BETTER_AUTH_TRUSTED_ORIGINS`).
+
+## Segurança
+
+- `@fastify/helmet` adiciona headers de segurança em todas as respostas. A CSP é desativada apenas para não bloquear a interface do Scalar.
+- `@fastify/rate-limit` aplica limite global de `100` requisições por minuto por IP e limite de `20` por minuto nas rotas de autenticação. Os valores são configuráveis por ambiente.
+- O IP usado pelo rate limit do better-auth é derivado de `request.ip`; habilite `TRUST_PROXY=true` somente quando a API estiver atrás de um proxy confiável.
+- `CORS_ORIGINS` usa allowlist explícita e não aceita `*` com credenciais.
+- `pnpm audit:prod` verifica vulnerabilidades nas dependências de produção e também roda no CI.
+- Ao excluir um usuário, planos, dias e exercícios são removidos por `ON DELETE CASCADE`.
 
 ## Endpoints de treino
 
@@ -272,6 +302,37 @@ curl -i -b cookies.txt -X POST \
 | `pnpm test:typecheck` | Apenas o typecheck dos testes                              |
 | `pnpm test:watch`     | Executa o Vitest em modo watch                             |
 
+## Docker
+
+A imagem de produção é multi-stage, roda como usuário `node` e possui healthcheck em `/health`:
+
+```bash
+docker build -t bootcamp-treinos-api .
+```
+
+Para subir API, PostgreSQL e migrations com o Compose de produção:
+
+```bash
+cp .env.example .env
+# Edite POSTGRES_PASSWORD, BETTER_AUTH_SECRET, BETTER_AUTH_URL e CORS_ORIGINS
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml logs -f api
+```
+
+O serviço `migrate` executa `pnpm db:deploy` e precisa terminar com sucesso antes de a API iniciar. O banco usa o volume `pgdata-prod`. Para derrubar os containers sem apagar os dados:
+
+```bash
+docker compose -f docker-compose.prod.yml down
+```
+
+Para remover também o volume do banco:
+
+```bash
+docker compose -f docker-compose.prod.yml down -v
+```
+
+O `Dockerfile` define `HOST=0.0.0.0` para permitir o acesso via portas publicadas. Em execuções locais fora do container, o padrão é `127.0.0.1`; ajuste `HOST` apenas se necessário. O `DATABASE_URL` do container deve apontar para um PostgreSQL acessível a partir da rede Docker.
+
 ## Testes
 
 Os testes são de integração e usam `app.inject`, sem iniciar um servidor HTTP real.
@@ -328,6 +389,10 @@ docker exec bootcamp-treinos-db psql -U postgres -d postgres \
 - Swagger principal, rota raiz e documentação Scalar.
 - Redirecionamento de `/docs` para `/docs/`.
 - Preflight CORS e exposição de `X-Total-Count`.
+- Parsing e validação de origens permitidas.
+- Healthcheck e headers de segurança.
+- Rate limit nas rotas de autenticação.
+- Exclusão em cascata de planos, dias e exercícios ao remover usuário.
 - Falha interna do handler de autenticação.
 
 ## CI
@@ -342,6 +407,7 @@ O workflow `.github/workflows/ci.yml` executa em `push`, `pull_request` e execu�
 6. Testes com cobertura usando PostgreSQL 16 como serviço.
 7. Upload do relatório de cobertura como artifact.
 8. Build da aplicação.
+9. Build da imagem Docker de produção.
 
 O CI usa credenciais e segredo exclusivos para teste. Em produção, utilize secrets reais.
 
@@ -352,4 +418,5 @@ O CI usa credenciais e segredo exclusivos para teste. Em produção, utilize sec
 - `DELETE /workout-plans/:id` remove exercícios, dias e o plano em transação.
 - `DELETE /workout-plans/:planId/days/:dayId` remove os exercícios do dia em transação.
 - O campo `WorkoutDay.updateAt` foi mantido conforme o schema original.
-- As relações de treino não usam `onDelete: Cascade`; a exclusão é tratada explicitamente nas rotas.
+- As relações de treino usam `onDelete: Cascade` para garantir consistência ao excluir usuário, plano ou dia. As rotas de exclusão continuam usando transações para respostas previsíveis.
+- A exclusão de usuário remove planos, dias e exercícios; não há endpoint público de exclusão de usuário.
