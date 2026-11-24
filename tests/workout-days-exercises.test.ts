@@ -34,9 +34,9 @@ describe("workout days and exercises", () => {
 
   beforeEach(async () => {
     await resetDatabase();
-    ownerCookie = await signUp(app, "owner@example.com");
-    intruderCookie = await signUp(app, "intruder@example.com");
-    plan = await createPlan(app, ownerCookie);
+    ownerCookie = await signUp({ app, email: "owner@example.com" });
+    intruderCookie = await signUp({ app, email: "intruder@example.com" });
+    plan = await createPlan({ app, cookie: ownerCookie });
     const day = firstWorkoutDay(plan);
     const exercise = firstWorkoutExercise(day);
     planId = plan.id;

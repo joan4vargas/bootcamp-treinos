@@ -26,7 +26,7 @@ describe("workout plans", () => {
 
   beforeEach(async () => {
     await resetDatabase();
-    cookie = await signUp(app, "plans@example.com");
+    cookie = await signUp({ app, email: "plans@example.com" });
   });
 
   afterAll(async () => {
@@ -36,7 +36,7 @@ describe("workout plans", () => {
   });
 
   it("cria um plano com dias e exercícios", async () => {
-    const plan = await createPlan(app, cookie);
+    const plan = await createPlan({ app, cookie: cookie });
     const day = firstWorkoutDay(plan);
     const exercise = firstWorkoutExercise(day);
 
@@ -80,20 +80,32 @@ describe("workout plans", () => {
   });
 
   it("lista com filtro e paginação", async () => {
-    const activeA = await createPlan(app, cookie, {
-      ...defaultPlanPayload,
-      name: "Ativo A",
-      isActive: true,
+    const activeA = await createPlan({
+      app,
+      cookie,
+      payload: {
+        ...defaultPlanPayload,
+        name: "Ativo A",
+        isActive: true,
+      },
     });
-    const activeB = await createPlan(app, cookie, {
-      ...defaultPlanPayload,
-      name: "Ativo B",
-      isActive: true,
+    const activeB = await createPlan({
+      app,
+      cookie,
+      payload: {
+        ...defaultPlanPayload,
+        name: "Ativo B",
+        isActive: true,
+      },
     });
-    const inactive = await createPlan(app, cookie, {
-      ...defaultPlanPayload,
-      name: "Inativo",
-      isActive: false,
+    const inactive = await createPlan({
+      app,
+      cookie,
+      payload: {
+        ...defaultPlanPayload,
+        name: "Inativo",
+        isActive: false,
+      },
     });
 
     const firstPage = await app.inject({
@@ -132,7 +144,7 @@ describe("workout plans", () => {
   });
 
   it("busca e atualiza um plano", async () => {
-    const plan = await createPlan(app, cookie);
+    const plan = await createPlan({ app, cookie: cookie });
 
     const getResponse = await app.inject({
       method: "GET",
@@ -211,8 +223,8 @@ describe("workout plans", () => {
   });
 
   it("isola planos entre usuários", async () => {
-    const plan = await createPlan(app, cookie);
-    const otherCookie = await signUp(app, "other@example.com");
+    const plan = await createPlan({ app, cookie: cookie });
+    const otherCookie = await signUp({ app, email: "other@example.com" });
 
     const getOtherResponse = await app.inject({
       method: "GET",
@@ -245,7 +257,7 @@ describe("workout plans", () => {
   });
 
   it("remove o plano e seus filhos", async () => {
-    const plan = await createPlan(app, cookie);
+    const plan = await createPlan({ app, cookie: cookie });
 
     const deleteResponse = await app.inject({
       method: "DELETE",
@@ -291,7 +303,7 @@ describe("workout plans", () => {
   });
 
   it("remove planos, dias e exercícios ao excluir o usuário", async () => {
-    const plan = await createPlan(app, cookie);
+    const plan = await createPlan({ app, cookie: cookie });
     const day = firstWorkoutDay(plan);
     const user = await prisma.user.findUniqueOrThrow({
       where: {

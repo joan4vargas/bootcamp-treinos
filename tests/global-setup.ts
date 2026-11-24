@@ -7,7 +7,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client.js";
 import { adminDatabaseUrl, testDatabaseName, testDatabaseUrl } from "./env.js";
 
-async function ensureTestDatabase() {
+const ensureTestDatabase = async () => {
   const prisma = new PrismaClient({
     adapter: new PrismaPg({ connectionString: adminDatabaseUrl }),
   });
@@ -27,9 +27,9 @@ async function ensureTestDatabase() {
   } finally {
     await prisma.$disconnect();
   }
-}
+};
 
-export default async function globalSetup() {
+export default async () => {
   await ensureTestDatabase();
 
   execSync("pnpm exec prisma migrate deploy", {
@@ -40,4 +40,4 @@ export default async function globalSetup() {
     },
     stdio: "inherit",
   });
-}
+};

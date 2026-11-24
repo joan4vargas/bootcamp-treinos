@@ -2,7 +2,7 @@ import "dotenv/config";
 
 const defaultOrigin = "http://localhost:3000";
 
-function normalizeOrigin(origin: string) {
+const normalizeOrigin = (origin: string) => {
   const trimmed = origin.trim().replace(/\/+$/, "");
 
   if (!trimmed) {
@@ -15,12 +15,12 @@ function normalizeOrigin(origin: string) {
   } catch {
     return trimmed;
   }
-}
+};
 
-export function parseOrigins(
+export const parseOrigins = (
   value: string | undefined,
   fallback = defaultOrigin,
-) {
+) => {
   const source = value?.trim() ? value : fallback;
   const origins = source
     .split(",")
@@ -38,12 +38,12 @@ export function parseOrigins(
   }
 
   return [...new Set(origins)];
-}
+};
 
-function positiveInteger(value: string | undefined, fallback: number) {
+const positiveInteger = (value: string | undefined, fallback: number) => {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
-}
+};
 
 const authUrl = process.env.BETTER_AUTH_URL ?? defaultOrigin;
 

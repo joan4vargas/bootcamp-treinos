@@ -12,7 +12,6 @@ import {
   validatorCompiler,
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
-import { z } from "zod";
 
 import { auth } from "./lib/auth.js";
 import {
@@ -21,21 +20,22 @@ import {
   rateLimit as defaultRateLimit,
   trustProxy,
 } from "./lib/config.js";
+import { systemRoutes } from "./routes/system.js";
 import { workoutDaysRoutes } from "./routes/workout-days.js";
 import { workoutExercisesRoutes } from "./routes/workout-exercises.js";
 import { workoutPlansRoutes } from "./routes/workout-plans.js";
 
-type RateLimitOptions = {
+interface RateLimitOptions {
   max?: number;
   timeWindow?: string | number;
-};
+}
 
 export interface BuildAppOptions extends FastifyServerOptions {
   authRateLimit?: RateLimitOptions;
   rateLimit?: RateLimitOptions;
 }
 
-export async function buildApp(options: BuildAppOptions = {}) {
+export const buildApp = async (options: BuildAppOptions = {}) => {
   const {
     authRateLimit: authRateLimitOverride,
     rateLimit: rateLimitOverride,
@@ -121,6 +121,9 @@ export async function buildApp(options: BuildAppOptions = {}) {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
+  // Rotas de sistema
+  await app.register(systemRoutes);
+
   // Rotas de planos de treino
   await app.register(workoutPlansRoutes, {
     prefix: "/workout-plans",
@@ -130,45 +133,6 @@ export async function buildApp(options: BuildAppOptions = {}) {
   });
   await app.register(workoutExercisesRoutes, {
     prefix: "/workout-plans",
-  });
-
-  // Rota de teste
-  app.withTypeProvider<ZodTypeProvider>().route({
-    method: "GET",
-    url: "/",
-    schema: {
-      description: "Hello World",
-      tags: ["hello"],
-      response: {
-        200: z.object({
-          message: z.string(),
-        }),
-      },
-    },
-    handler: () => {
-      return {
-        message: "API rodando com sucesso!",
-      };
-    },
-  });
-
-  app.withTypeProvider<ZodTypeProvider>().route({
-    method: "GET",
-    url: "/health",
-    schema: {
-      description: "Verifica a saúde da API",
-      tags: ["health"],
-      response: {
-        200: z.object({
-          status: z.literal("ok"),
-        }),
-      },
-    },
-    handler: () => {
-      return {
-        status: "ok" as const,
-      };
-    },
   });
 
   // Register authentication endpoint
@@ -220,4 +184,4 @@ export async function buildApp(options: BuildAppOptions = {}) {
   });
 
   return app;
-}
+};

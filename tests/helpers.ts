@@ -32,7 +32,7 @@ export interface WorkoutPlanResponse {
   workoutDays: WorkoutDayResponse[];
 }
 
-export function firstWorkoutDay(plan: WorkoutPlanResponse) {
+export const firstWorkoutDay = (plan: WorkoutPlanResponse) => {
   const workoutDay = plan.workoutDays[0];
 
   if (!workoutDay) {
@@ -40,9 +40,9 @@ export function firstWorkoutDay(plan: WorkoutPlanResponse) {
   }
 
   return workoutDay;
-}
+};
 
-export function firstWorkoutExercise(day: WorkoutDayResponse) {
+export const firstWorkoutExercise = (day: WorkoutDayResponse) => {
   const workoutExercise = day.exercises[0];
 
   if (!workoutExercise) {
@@ -50,7 +50,7 @@ export function firstWorkoutExercise(day: WorkoutDayResponse) {
   }
 
   return workoutExercise;
-}
+};
 
 export interface CreateWorkoutPlanPayload {
   name: string;
@@ -90,13 +90,13 @@ export const defaultPlanPayload: CreateWorkoutPlanPayload = {
   ],
 };
 
-export async function createTestApp() {
+export const createTestApp = async () => {
   const app = await buildApp({ logger: false });
   await app.ready();
   return app;
-}
+};
 
-export async function resetDatabase() {
+export const resetDatabase = async () => {
   await prisma.workoutExercise.deleteMany();
   await prisma.workoutDay.deleteMany();
   await prisma.workoutPlan.deleteMany();
@@ -104,26 +104,29 @@ export async function resetDatabase() {
   await prisma.account.deleteMany();
   await prisma.verification.deleteMany();
   await prisma.user.deleteMany();
-}
+};
 
-type CookieResponse = {
+interface CookieResponse {
   cookies: Array<{
     name: string;
     value: string;
   }>;
-};
-
-function getCookie(response: CookieResponse) {
-  return response.cookies
-    .map((cookie) => `${cookie.name}=${cookie.value}`)
-    .join("; ");
 }
 
-export async function signUp(
-  app: FastifyInstance,
-  email: string,
+const getCookie = (response: CookieResponse) =>
+  response.cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join("; ");
+
+interface SignUpOptions {
+  app: FastifyInstance;
+  email: string;
+  name?: string;
+}
+
+export const signUp = async ({
+  app,
+  email,
   name = "Test User",
-) {
+}: SignUpOptions) => {
   const response = await app.inject({
     method: "POST",
     url: "/api/auth/sign-up/email",
@@ -150,19 +153,23 @@ export async function signUp(
   }
 
   return cookie;
+};
+
+export const authHeaders = (cookie: string) => ({
+  cookie,
+});
+
+interface CreatePlanOptions {
+  app: FastifyInstance;
+  cookie: string;
+  payload?: CreateWorkoutPlanPayload;
 }
 
-export function authHeaders(cookie: string) {
-  return {
-    cookie,
-  };
-}
-
-export async function createPlan(
-  app: FastifyInstance,
-  cookie: string,
-  payload: CreateWorkoutPlanPayload = defaultPlanPayload,
-) {
+export const createPlan = async ({
+  app,
+  cookie,
+  payload = defaultPlanPayload,
+}: CreatePlanOptions) => {
   const response = await app.inject({
     method: "POST",
     url: "/workout-plans",
@@ -177,4 +184,4 @@ export async function createPlan(
   }
 
   return response.json() as WorkoutPlanResponse;
-}
+};

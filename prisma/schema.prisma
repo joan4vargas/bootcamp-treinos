@@ -60,7 +60,7 @@ model WorkoutDay {
   weekDay       WeekDay
   exercises     WorkoutExercise[]
   createdAt     DateTime          @default(now())
-  updateAt      DateTime          @updatedAt
+  updatedAt     DateTime          @updatedAt
 }
 
 model WorkoutExercise {

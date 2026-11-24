@@ -1,52 +1,19 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
-import { z } from "zod";
 
-import type { Prisma } from "../generated/prisma/client.js";
 import { getSession } from "../lib/auth-session.js";
-import { prisma } from "../lib/db.js";
+import { sendRouteError } from "../lib/route-error-handler.js";
 import {
-  findOwnedWorkoutDay,
-  findOwnedWorkoutPlan,
-} from "../lib/workout-access.js";
-import {
+  dayParamsSchema,
+  emptyResponseSchema,
   errorResponseSchema,
-  weekDaySchema,
+  planParamsSchema,
+  updateWorkoutDayBodySchema,
   workoutDayInputSchema,
   workoutDayResponseSchema,
-} from "./workout-schemas.js";
-
-const planParamsSchema = z.object({
-  planId: z.uuid(),
-});
-
-const dayParamsSchema = z.object({
-  planId: z.uuid(),
-  dayId: z.uuid(),
-});
-
-const updateWorkoutDayBodySchema = z
-  .object({
-    name: z.string().min(1).optional(),
-    weekDay: weekDaySchema.optional(),
-    isRest: z.boolean().optional(),
-  })
-  .refine(
-    (data) =>
-      data.name !== undefined ||
-      data.weekDay !== undefined ||
-      data.isRest !== undefined,
-    {
-      message: "At least one field must be provided",
-    },
-  );
-
-const workoutDayInclude = {
-  exercises: {
-    orderBy: {
-      order: "asc",
-    },
-  },
-} satisfies Prisma.WorkoutDayInclude;
+} from "../schemas/index.js";
+import { CreateWorkoutDay } from "../usecases/CreateWorkoutDay.js";
+import { DeleteWorkoutDay } from "../usecases/DeleteWorkoutDay.js";
+import { UpdateWorkoutDay } from "../usecases/UpdateWorkoutDay.js";
 
 export const workoutDaysRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
@@ -61,6 +28,7 @@ export const workoutDaysRoutes: FastifyPluginAsyncZod = async (app) => {
           201: workoutDayResponseSchema,
           401: errorResponseSchema,
           404: errorResponseSchema,
+          500: errorResponseSchema,
         },
       },
     },
@@ -68,40 +36,23 @@ export const workoutDaysRoutes: FastifyPluginAsyncZod = async (app) => {
       const session = await getSession(request);
 
       if (!session) {
-        return reply.status(401).send({ message: "Unauthorized" });
+        return reply
+          .status(401)
+          .send({ error: "Unauthorized", code: "UNAUTHORIZED" });
       }
 
-      const workoutPlan = await findOwnedWorkoutPlan(
-        request.params.planId,
-        session.user.id,
-      );
+      try {
+        const createWorkoutDay = new CreateWorkoutDay();
+        const result = await createWorkoutDay.execute({
+          userId: session.user.id,
+          workoutPlanId: request.params.planId,
+          ...request.body,
+        });
 
-      if (!workoutPlan) {
-        return reply.status(404).send({ message: "Workout plan not found" });
+        return reply.status(201).send(result);
+      } catch (error) {
+        return sendRouteError({ app, reply, error });
       }
-
-      const { name, weekDay, isRest, exercises } = request.body;
-
-      const workoutDay = await prisma.workoutDay.create({
-        data: {
-          name,
-          weekDay,
-          isRest,
-          workoutPlanId: workoutPlan.id,
-          exercises: {
-            create: exercises.map((exercise) => ({
-              name: exercise.name,
-              order: exercise.order,
-              sets: exercise.sets,
-              reps: exercise.reps,
-              restTimeInSeconds: exercise.restTimeInSeconds,
-            })),
-          },
-        },
-        include: workoutDayInclude,
-      });
-
-      return reply.status(201).send(workoutDay);
     },
   );
 
@@ -117,6 +68,7 @@ export const workoutDaysRoutes: FastifyPluginAsyncZod = async (app) => {
           200: workoutDayResponseSchema,
           401: errorResponseSchema,
           404: errorResponseSchema,
+          500: errorResponseSchema,
         },
       },
     },
@@ -124,28 +76,24 @@ export const workoutDaysRoutes: FastifyPluginAsyncZod = async (app) => {
       const session = await getSession(request);
 
       if (!session) {
-        return reply.status(401).send({ message: "Unauthorized" });
+        return reply
+          .status(401)
+          .send({ error: "Unauthorized", code: "UNAUTHORIZED" });
       }
 
-      const workoutDay = await findOwnedWorkoutDay(
-        request.params.planId,
-        request.params.dayId,
-        session.user.id,
-      );
+      try {
+        const updateWorkoutDay = new UpdateWorkoutDay();
+        const result = await updateWorkoutDay.execute({
+          userId: session.user.id,
+          workoutPlanId: request.params.planId,
+          workoutDayId: request.params.dayId,
+          ...request.body,
+        });
 
-      if (!workoutDay) {
-        return reply.status(404).send({ message: "Workout day not found" });
+        return result;
+      } catch (error) {
+        return sendRouteError({ app, reply, error });
       }
-
-      const updatedWorkoutDay = await prisma.workoutDay.update({
-        where: {
-          id: workoutDay.id,
-        },
-        data: request.body,
-        include: workoutDayInclude,
-      });
-
-      return updatedWorkoutDay;
     },
   );
 
@@ -157,9 +105,10 @@ export const workoutDaysRoutes: FastifyPluginAsyncZod = async (app) => {
         summary: "Remove um dia do plano de treino",
         params: dayParamsSchema,
         response: {
-          204: z.null(),
+          204: emptyResponseSchema,
           401: errorResponseSchema,
           404: errorResponseSchema,
+          500: errorResponseSchema,
         },
       },
     },
@@ -167,33 +116,23 @@ export const workoutDaysRoutes: FastifyPluginAsyncZod = async (app) => {
       const session = await getSession(request);
 
       if (!session) {
-        return reply.status(401).send({ message: "Unauthorized" });
+        return reply
+          .status(401)
+          .send({ error: "Unauthorized", code: "UNAUTHORIZED" });
       }
 
-      const workoutDay = await findOwnedWorkoutDay(
-        request.params.planId,
-        request.params.dayId,
-        session.user.id,
-      );
+      try {
+        const deleteWorkoutDay = new DeleteWorkoutDay();
+        await deleteWorkoutDay.execute({
+          userId: session.user.id,
+          workoutPlanId: request.params.planId,
+          workoutDayId: request.params.dayId,
+        });
 
-      if (!workoutDay) {
-        return reply.status(404).send({ message: "Workout day not found" });
+        return reply.status(204).send(null);
+      } catch (error) {
+        return sendRouteError({ app, reply, error });
       }
-
-      await prisma.$transaction([
-        prisma.workoutExercise.deleteMany({
-          where: {
-            workoutDayId: workoutDay.id,
-          },
-        }),
-        prisma.workoutDay.delete({
-          where: {
-            id: workoutDay.id,
-          },
-        }),
-      ]);
-
-      return reply.status(204).send(null);
     },
   );
 };

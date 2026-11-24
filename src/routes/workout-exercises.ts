@@ -1,48 +1,19 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
-import { z } from "zod";
 
 import { getSession } from "../lib/auth-session.js";
-import { prisma } from "../lib/db.js";
+import { sendRouteError } from "../lib/route-error-handler.js";
 import {
-  findOwnedWorkoutDay,
-  findOwnedWorkoutExercise,
-} from "../lib/workout-access.js";
-import {
+  dayParamsSchema,
+  emptyResponseSchema,
   errorResponseSchema,
+  exerciseParamsSchema,
+  updateWorkoutExerciseBodySchema,
   workoutExerciseInputSchema,
   workoutExerciseResponseSchema,
-} from "./workout-schemas.js";
-
-const dayParamsSchema = z.object({
-  planId: z.uuid(),
-  dayId: z.uuid(),
-});
-
-const exerciseParamsSchema = z.object({
-  planId: z.uuid(),
-  dayId: z.uuid(),
-  exerciseId: z.uuid(),
-});
-
-const updateWorkoutExerciseBodySchema = z
-  .object({
-    name: z.string().min(1).optional(),
-    order: z.number().int().positive().optional(),
-    sets: z.number().int().positive().optional(),
-    reps: z.number().int().positive().optional(),
-    restTimeInSeconds: z.number().int().nonnegative().optional(),
-  })
-  .refine(
-    (data) =>
-      data.name !== undefined ||
-      data.order !== undefined ||
-      data.sets !== undefined ||
-      data.reps !== undefined ||
-      data.restTimeInSeconds !== undefined,
-    {
-      message: "At least one field must be provided",
-    },
-  );
+} from "../schemas/index.js";
+import { CreateWorkoutExercise } from "../usecases/CreateWorkoutExercise.js";
+import { DeleteWorkoutExercise } from "../usecases/DeleteWorkoutExercise.js";
+import { UpdateWorkoutExercise } from "../usecases/UpdateWorkoutExercise.js";
 
 export const workoutExercisesRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
@@ -57,6 +28,7 @@ export const workoutExercisesRoutes: FastifyPluginAsyncZod = async (app) => {
           201: workoutExerciseResponseSchema,
           401: errorResponseSchema,
           404: errorResponseSchema,
+          500: errorResponseSchema,
         },
       },
     },
@@ -64,27 +36,24 @@ export const workoutExercisesRoutes: FastifyPluginAsyncZod = async (app) => {
       const session = await getSession(request);
 
       if (!session) {
-        return reply.status(401).send({ message: "Unauthorized" });
+        return reply
+          .status(401)
+          .send({ error: "Unauthorized", code: "UNAUTHORIZED" });
       }
 
-      const workoutDay = await findOwnedWorkoutDay(
-        request.params.planId,
-        request.params.dayId,
-        session.user.id,
-      );
-
-      if (!workoutDay) {
-        return reply.status(404).send({ message: "Workout day not found" });
-      }
-
-      const workoutExercise = await prisma.workoutExercise.create({
-        data: {
+      try {
+        const createWorkoutExercise = new CreateWorkoutExercise();
+        const result = await createWorkoutExercise.execute({
+          userId: session.user.id,
+          workoutPlanId: request.params.planId,
+          workoutDayId: request.params.dayId,
           ...request.body,
-          workoutDayId: workoutDay.id,
-        },
-      });
+        });
 
-      return reply.status(201).send(workoutExercise);
+        return reply.status(201).send(result);
+      } catch (error) {
+        return sendRouteError({ app, reply, error });
+      }
     },
   );
 
@@ -100,6 +69,7 @@ export const workoutExercisesRoutes: FastifyPluginAsyncZod = async (app) => {
           200: workoutExerciseResponseSchema,
           401: errorResponseSchema,
           404: errorResponseSchema,
+          500: errorResponseSchema,
         },
       },
     },
@@ -107,30 +77,25 @@ export const workoutExercisesRoutes: FastifyPluginAsyncZod = async (app) => {
       const session = await getSession(request);
 
       if (!session) {
-        return reply.status(401).send({ message: "Unauthorized" });
-      }
-
-      const workoutExercise = await findOwnedWorkoutExercise(
-        request.params.planId,
-        request.params.dayId,
-        request.params.exerciseId,
-        session.user.id,
-      );
-
-      if (!workoutExercise) {
         return reply
-          .status(404)
-          .send({ message: "Workout exercise not found" });
+          .status(401)
+          .send({ error: "Unauthorized", code: "UNAUTHORIZED" });
       }
 
-      const updatedWorkoutExercise = await prisma.workoutExercise.update({
-        where: {
-          id: workoutExercise.id,
-        },
-        data: request.body,
-      });
+      try {
+        const updateWorkoutExercise = new UpdateWorkoutExercise();
+        const result = await updateWorkoutExercise.execute({
+          userId: session.user.id,
+          workoutPlanId: request.params.planId,
+          workoutDayId: request.params.dayId,
+          workoutExerciseId: request.params.exerciseId,
+          ...request.body,
+        });
 
-      return updatedWorkoutExercise;
+        return result;
+      } catch (error) {
+        return sendRouteError({ app, reply, error });
+      }
     },
   );
 
@@ -142,9 +107,10 @@ export const workoutExercisesRoutes: FastifyPluginAsyncZod = async (app) => {
         summary: "Remove um exercício do dia de treino",
         params: exerciseParamsSchema,
         response: {
-          204: z.null(),
+          204: emptyResponseSchema,
           401: errorResponseSchema,
           404: errorResponseSchema,
+          500: errorResponseSchema,
         },
       },
     },
@@ -152,29 +118,24 @@ export const workoutExercisesRoutes: FastifyPluginAsyncZod = async (app) => {
       const session = await getSession(request);
 
       if (!session) {
-        return reply.status(401).send({ message: "Unauthorized" });
-      }
-
-      const workoutExercise = await findOwnedWorkoutExercise(
-        request.params.planId,
-        request.params.dayId,
-        request.params.exerciseId,
-        session.user.id,
-      );
-
-      if (!workoutExercise) {
         return reply
-          .status(404)
-          .send({ message: "Workout exercise not found" });
+          .status(401)
+          .send({ error: "Unauthorized", code: "UNAUTHORIZED" });
       }
 
-      await prisma.workoutExercise.delete({
-        where: {
-          id: workoutExercise.id,
-        },
-      });
+      try {
+        const deleteWorkoutExercise = new DeleteWorkoutExercise();
+        await deleteWorkoutExercise.execute({
+          userId: session.user.id,
+          workoutPlanId: request.params.planId,
+          workoutDayId: request.params.dayId,
+          workoutExerciseId: request.params.exerciseId,
+        });
 
-      return reply.status(204).send(null);
+        return reply.status(204).send(null);
+      } catch (error) {
+        return sendRouteError({ app, reply, error });
+      }
     },
   );
 };

@@ -44,7 +44,7 @@ describe("auth, documentation and CORS", () => {
     expect(anonymousResponse.statusCode).toBe(200);
     expect(anonymousResponse.json()).toBeNull();
 
-    const cookie = await signUp(app, "session@example.com");
+    const cookie = await signUp({ app, email: "session@example.com" });
     const sessionResponse = await app.inject({
       method: "GET",
       url: "/api/auth/get-session",
@@ -64,7 +64,7 @@ describe("auth, documentation and CORS", () => {
   });
 
   it("faz login, logout e invalida a sessão", async () => {
-    const cookie = await signUp(app, "login@example.com");
+    const cookie = await signUp({ app, email: "login@example.com" });
 
     const signOutResponse = await app.inject({
       method: "POST",
@@ -131,7 +131,7 @@ describe("auth, documentation and CORS", () => {
   });
 
   it("rejeita cadastro duplicado", async () => {
-    await signUp(app, "duplicate@example.com");
+    await signUp({ app, email: "duplicate@example.com" });
 
     const response = await app.inject({
       method: "POST",
@@ -317,8 +317,8 @@ describe("auth, documentation and CORS", () => {
   });
 
   it("expõe X-Total-Count em resposta CORS", async () => {
-    const cookie = await signUp(app, "cors@example.com");
-    await createPlan(app, cookie);
+    const cookie = await signUp({ app, email: "cors@example.com" });
+    await createPlan({ app, cookie: cookie });
 
     const response = await app.inject({
       method: "GET",

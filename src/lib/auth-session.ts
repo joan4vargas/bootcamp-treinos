@@ -3,8 +3,7 @@ import type { FastifyRequest } from "fastify";
 
 import { auth } from "./auth.js";
 
-export async function getSession(request: FastifyRequest) {
-  return auth.api.getSession({
+export const getSession = async (request: FastifyRequest) =>
+  auth.api.getSession({
     headers: fromNodeHeaders(request.headers),
   });
-}
