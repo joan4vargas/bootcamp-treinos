@@ -1,0 +1,8 @@
+- Estilização: NUNCA use cores hard-coded (ex.: bg-[#000000], text-white). SEMPRE use as variáveis de cor do tema em app/globals.css (bg-background, text-foreground, bg-primary, text-overlay-foreground, bg-streak etc.). Se faltar uma cor, adicione uma variável nova no tema.
+- SEMPRE use componentes do shadcn/ui quando disponíveis (Button, Input, Card, Badge, Avatar, Form...). Antes de criar um componente novo, verifique se o shadcn já tem um.
+- SEMPRE use o Button do shadcn/ui para botões (com asChild quando for um Link).
+- NUNCA crie mais de um componente no mesmo arquivo.
+- NUNCA verifique autenticação no middleware/proxy do Next.js. Faça a verificação na própria página (server component) com getAuthenticatedUser ou requireOnboardedUser.
+- A página não deve ser client component; transforme em client component apenas os componentes que realmente precisam de interatividade.
+- Formulários: use o componente Form do shadcn com react-hook-form + zod, nunca useState para valores de input.
+- Componentes reutilizados entre páginas ficam em app/_components; os exclusivos de uma rota ficam em _components dentro da rota.

@@ -1,0 +1,9 @@
+- Escreva código limpo, conciso e fácil de manter, seguindo princípios do SOLID e clean code.
+- Use nomes de variáveis descritivos (ex.: isLoading, hasError).
+- Use kebab-case para nomes de pastas e arquivos.
+- Sempre use TypeScript. Nunca use any.
+- DRY (Don't Repeat Yourself). Evite duplicidade; crie funções/componentes reutilizáveis.
+- NUNCA escreva comentários no código.
+- SEMPRE rode pnpm run dev para verificar se as mudanças estão funcionais.
+- SEMPRE use a biblioteca dayjs para manipulação e formatação de datas.
+- Evite números mágicos: extraia para constantes com nome (ex.: GRAMS_IN_KILOGRAM).

@@ -1,0 +1,6 @@
+- SEMPRE chame as rotas da API por meio das funções geradas pelo Orval em app/_lib/api/fetch-generated/index.ts (exceto o chat, que usa o Vercel AI SDK).
+- SEMPRE use o mutator customFetch de app/_lib/api/fetch.ts (repassa o cookie de sessão nas chamadas feitas no servidor).
+- As funções do Orval só podem ser chamadas no servidor (server components e server actions).
+- Mutações (iniciar/concluir treino) são server actions em _actions.ts, seguidas de revalidatePath.
+- Quando a API mudar, SEMPRE rode npx orval para regenerar os tipos.
+- Sempre use Context7 para consultar a documentação das bibliotecas antes de usá-las.
