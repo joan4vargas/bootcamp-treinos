@@ -39,6 +39,7 @@ interface WorkoutDayRecord {
   workoutPlanId: string;
   isRest: boolean;
   weekDay: WeekDay;
+  coverImageUrl: string | null;
   exercises: WorkoutExerciseRecord[];
   createdAt: Date;
   updatedAt: Date;
@@ -72,6 +73,8 @@ export interface WorkoutDayDto {
   workoutPlanId: string;
   isRest: boolean;
   weekDay: WeekDay;
+  coverImageUrl: string | null;
+  estimatedDurationInSeconds: number;
   exercises: WorkoutExerciseDto[];
   createdAt: string;
   updatedAt: string;
@@ -86,6 +89,44 @@ export interface WorkoutPlanDto {
   updatedAt: string;
   workoutDays: WorkoutDayDto[];
 }
+
+const SECONDS_PER_REP = 4;
+
+interface WorkoutSessionRecord {
+  id: string;
+  workoutDayId: string;
+  startedAt: Date;
+  completedAt: Date | null;
+}
+
+export interface WorkoutSessionDto {
+  id: string;
+  workoutDayId: string;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export const estimateWorkoutDayDurationInSeconds = (
+  exercises: Array<
+    Pick<WorkoutExerciseRecord, "sets" | "reps" | "restTimeInSeconds">
+  >,
+) =>
+  exercises.reduce(
+    (total, exercise) =>
+      total +
+      exercise.sets *
+        (exercise.reps * SECONDS_PER_REP + exercise.restTimeInSeconds),
+    0,
+  );
+
+export const toWorkoutSessionDto = (
+  session: WorkoutSessionRecord,
+): WorkoutSessionDto => ({
+  id: session.id,
+  workoutDayId: session.workoutDayId,
+  startedAt: session.startedAt.toISOString(),
+  completedAt: session.completedAt?.toISOString() ?? null,
+});
 
 export const toWorkoutExerciseDto = (
   exercise: WorkoutExerciseRecord,
@@ -107,6 +148,10 @@ export const toWorkoutDayDto = (day: WorkoutDayRecord): WorkoutDayDto => ({
   workoutPlanId: day.workoutPlanId,
   isRest: day.isRest,
   weekDay: day.weekDay,
+  coverImageUrl: day.coverImageUrl,
+  estimatedDurationInSeconds: estimateWorkoutDayDurationInSeconds(
+    day.exercises,
+  ),
   exercises: day.exercises.map(toWorkoutExerciseDto),
   createdAt: day.createdAt.toISOString(),
   updatedAt: day.updatedAt.toISOString(),

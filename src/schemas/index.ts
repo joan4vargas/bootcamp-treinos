@@ -16,6 +16,7 @@ export const workoutDayInputSchema = z.object({
   name: z.string().min(1),
   weekDay: weekDaySchema,
   isRest: z.boolean().default(false),
+  coverImageUrl: z.url().optional(),
   exercises: z.array(workoutExerciseInputSchema).default([]),
 });
 
@@ -45,12 +46,14 @@ export const updateWorkoutDayBodySchema = z
     name: z.string().min(1).optional(),
     weekDay: weekDaySchema.optional(),
     isRest: z.boolean().optional(),
+    coverImageUrl: z.url().nullable().optional(),
   })
   .refine(
     (data) =>
       data.name !== undefined ||
       data.weekDay !== undefined ||
-      data.isRest !== undefined,
+      data.isRest !== undefined ||
+      data.coverImageUrl !== undefined,
     {
       message: "At least one field must be provided",
     },
@@ -113,6 +116,8 @@ export const workoutDayResponseSchema = z.object({
   workoutPlanId: z.string(),
   isRest: z.boolean(),
   weekDay: weekDaySchema,
+  coverImageUrl: z.string().nullable(),
+  estimatedDurationInSeconds: z.number().int(),
   exercises: z.array(workoutExerciseResponseSchema),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -126,6 +131,90 @@ export const workoutPlanResponseSchema = z.object({
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
   workoutDays: z.array(workoutDayResponseSchema),
+});
+
+export const sessionParamsSchema = z.object({
+  planId: z.uuid(),
+  dayId: z.uuid(),
+  sessionId: z.uuid(),
+});
+
+export const workoutSessionResponseSchema = z.object({
+  id: z.string(),
+  workoutDayId: z.string(),
+  startedAt: z.iso.datetime(),
+  completedAt: z.iso.datetime().nullable(),
+});
+
+export const getWorkoutDayResponseSchema = workoutDayResponseSchema.extend({
+  sessions: z.array(workoutSessionResponseSchema),
+});
+
+export const updateWorkoutSessionBodySchema = z.object({
+  completedAt: z.iso.datetime(),
+});
+
+export const dayConsistencySchema = z.object({
+  workoutDayCompleted: z.boolean(),
+  workoutDayStarted: z.boolean(),
+});
+
+export const consistencyByDaySchema = z.record(
+  z.string(),
+  dayConsistencySchema,
+);
+
+export const homeParamsSchema = z.object({
+  date: z.iso.date(),
+});
+
+export const homeDataResponseSchema = z.object({
+  activeWorkoutPlanId: z.string().optional(),
+  todayWorkoutDay: z
+    .object({
+      workoutPlanId: z.string(),
+      id: z.string(),
+      name: z.string(),
+      isRest: z.boolean(),
+      weekDay: weekDaySchema,
+      estimatedDurationInSeconds: z.number().int(),
+      coverImageUrl: z.string().optional(),
+      exercisesCount: z.number().int(),
+    })
+    .optional(),
+  workoutStreak: z.number().int(),
+  consistencyByDay: consistencyByDaySchema,
+});
+
+export const statsQuerySchema = z.object({
+  from: z.iso.date(),
+  to: z.iso.date(),
+});
+
+export const statsResponseSchema = z.object({
+  workoutStreak: z.number().int(),
+  consistencyByDay: consistencyByDaySchema,
+  completedWorkoutsCount: z.number().int(),
+  conclusionRate: z.number().min(0).max(1),
+  totalTimeInSeconds: z.number().int(),
+});
+
+export const userTrainDataInputSchema = z.object({
+  weightInGrams: z.number().int().positive(),
+  heightInCentimeters: z.number().int().positive(),
+  age: z.number().int().positive(),
+  bodyFatPercentage: z.number().int().min(0).max(100),
+});
+
+export const userTrainDataResponseSchema = userTrainDataInputSchema
+  .extend({
+    userId: z.string(),
+    userName: z.string(),
+  })
+  .nullable();
+
+export const aiChatBodySchema = z.object({
+  messages: z.array(z.unknown()),
 });
 
 export const errorResponseSchema = z.object({

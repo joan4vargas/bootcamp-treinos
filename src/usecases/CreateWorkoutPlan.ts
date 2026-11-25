@@ -13,6 +13,7 @@ interface InputDto {
     name: string;
     weekDay: WeekDay;
     isRest: boolean;
+    coverImageUrl?: string;
     exercises: Array<{
       name: string;
       order: number;
@@ -36,6 +37,8 @@ interface OutputDto {
     workoutPlanId: string;
     isRest: boolean;
     weekDay: WeekDay;
+    coverImageUrl: string | null;
+    estimatedDurationInSeconds: number;
     exercises: Array<{
       id: string;
       name: string;
@@ -54,29 +57,44 @@ interface OutputDto {
 
 export class CreateWorkoutPlan {
   async execute(dto: InputDto): Promise<OutputDto> {
-    const workoutPlan = await prisma.workoutPlan.create({
-      data: {
-        name: dto.name,
-        isActive: dto.isActive,
-        userId: dto.userId,
-        workoutDays: {
-          create: dto.workoutDays.map((workoutDay) => ({
-            name: workoutDay.name,
-            weekDay: workoutDay.weekDay,
-            isRest: workoutDay.isRest,
-            exercises: {
-              create: workoutDay.exercises.map((exercise) => ({
-                name: exercise.name,
-                order: exercise.order,
-                sets: exercise.sets,
-                reps: exercise.reps,
-                restTimeInSeconds: exercise.restTimeInSeconds,
-              })),
-            },
-          })),
+    const workoutPlan = await prisma.$transaction(async (tx) => {
+      if (dto.isActive) {
+        await tx.workoutPlan.updateMany({
+          where: {
+            userId: dto.userId,
+            isActive: true,
+          },
+          data: {
+            isActive: false,
+          },
+        });
+      }
+
+      return tx.workoutPlan.create({
+        data: {
+          name: dto.name,
+          isActive: dto.isActive,
+          userId: dto.userId,
+          workoutDays: {
+            create: dto.workoutDays.map((workoutDay) => ({
+              name: workoutDay.name,
+              weekDay: workoutDay.weekDay,
+              isRest: workoutDay.isRest,
+              coverImageUrl: workoutDay.coverImageUrl,
+              exercises: {
+                create: workoutDay.exercises.map((exercise) => ({
+                  name: exercise.name,
+                  order: exercise.order,
+                  sets: exercise.sets,
+                  reps: exercise.reps,
+                  restTimeInSeconds: exercise.restTimeInSeconds,
+                })),
+              },
+            })),
+          },
         },
-      },
-      include: workoutPlanInclude,
+        include: workoutPlanInclude,
+      });
     });
 
     return toWorkoutPlanDto(workoutPlan);

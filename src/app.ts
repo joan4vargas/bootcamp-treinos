@@ -20,10 +20,15 @@ import {
   rateLimit as defaultRateLimit,
   trustProxy,
 } from "./lib/config.js";
+import { aiRoutes } from "./routes/ai.js";
+import { homeRoutes } from "./routes/home.js";
+import { meRoutes } from "./routes/me.js";
+import { statsRoutes } from "./routes/stats.js";
 import { systemRoutes } from "./routes/system.js";
 import { workoutDaysRoutes } from "./routes/workout-days.js";
 import { workoutExercisesRoutes } from "./routes/workout-exercises.js";
 import { workoutPlansRoutes } from "./routes/workout-plans.js";
+import { workoutSessionsRoutes } from "./routes/workout-sessions.js";
 
 interface RateLimitOptions {
   max?: number;
@@ -76,7 +81,7 @@ export const buildApp = async (options: BuildAppOptions = {}) => {
       servers: [
         {
           description: "Localhost",
-          url: "http://localhost:3000",
+          url: process.env.BETTER_AUTH_URL ?? "http://localhost:8080",
         },
       ],
     },
@@ -134,6 +139,14 @@ export const buildApp = async (options: BuildAppOptions = {}) => {
   await app.register(workoutExercisesRoutes, {
     prefix: "/workout-plans",
   });
+  await app.register(workoutSessionsRoutes, {
+    prefix: "/workout-plans",
+  });
+
+  await app.register(homeRoutes, { prefix: "/home" });
+  await app.register(statsRoutes, { prefix: "/stats" });
+  await app.register(meRoutes, { prefix: "/me" });
+  await app.register(aiRoutes, { prefix: "/ai" });
 
   // Register authentication endpoint
   app.route({
@@ -149,7 +162,7 @@ export const buildApp = async (options: BuildAppOptions = {}) => {
       try {
         const url = new URL(
           request.url,
-          `http://${request.headers.host ?? "localhost:3000"}`,
+          `http://${request.headers.host ?? "localhost:8080"}`,
         );
 
         const headers = new Headers();

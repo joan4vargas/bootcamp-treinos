@@ -20,6 +20,7 @@ export const workoutExercisesRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:planId/days/:dayId/exercises",
     {
       schema: {
+        operationId: "createWorkoutExercise",
         tags: ["workout-exercises"],
         summary: "Adiciona um exercício ao dia de treino",
         params: dayParamsSchema,
@@ -61,6 +62,7 @@ export const workoutExercisesRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:planId/days/:dayId/exercises/:exerciseId",
     {
       schema: {
+        operationId: "updateWorkoutExercise",
         tags: ["workout-exercises"],
         summary: "Atualiza um exercício do dia de treino",
         params: exerciseParamsSchema,
@@ -103,6 +105,7 @@ export const workoutExercisesRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:planId/days/:dayId/exercises/:exerciseId",
     {
       schema: {
+        operationId: "deleteWorkoutExercise",
         tags: ["workout-exercises"],
         summary: "Remove um exercício do dia de treino",
         params: exerciseParamsSchema,

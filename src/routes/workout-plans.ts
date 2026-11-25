@@ -23,6 +23,7 @@ export const workoutPlansRoutes: FastifyPluginAsyncZod = async (app) => {
     {
       prefixTrailingSlash: "no-slash",
       schema: {
+        operationId: "createWorkoutPlan",
         tags: ["workout-plans"],
         summary: "Cria um plano de treino",
         body: createWorkoutPlanBodySchema,
@@ -62,6 +63,7 @@ export const workoutPlansRoutes: FastifyPluginAsyncZod = async (app) => {
     {
       prefixTrailingSlash: "no-slash",
       schema: {
+        operationId: "listWorkoutPlans",
         tags: ["workout-plans"],
         summary: "Lista os planos de treino do usuário autenticado",
         description:
@@ -106,6 +108,7 @@ export const workoutPlansRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id",
     {
       schema: {
+        operationId: "getWorkoutPlan",
         tags: ["workout-plans"],
         summary: "Busca um plano de treino pelo ID",
         params: idParamsSchema,
@@ -144,6 +147,7 @@ export const workoutPlansRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id",
     {
       schema: {
+        operationId: "updateWorkoutPlan",
         tags: ["workout-plans"],
         summary: "Atualiza nome ou status de um plano de treino",
         params: idParamsSchema,
@@ -184,6 +188,7 @@ export const workoutPlansRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id",
     {
       schema: {
+        operationId: "deleteWorkoutPlan",
         tags: ["workout-plans"],
         summary: "Remove um plano de treino",
         params: idParamsSchema,

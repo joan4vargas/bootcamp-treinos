@@ -6,6 +6,7 @@ import {
   dayParamsSchema,
   emptyResponseSchema,
   errorResponseSchema,
+  getWorkoutDayResponseSchema,
   planParamsSchema,
   updateWorkoutDayBodySchema,
   workoutDayInputSchema,
@@ -13,6 +14,7 @@ import {
 } from "../schemas/index.js";
 import { CreateWorkoutDay } from "../usecases/CreateWorkoutDay.js";
 import { DeleteWorkoutDay } from "../usecases/DeleteWorkoutDay.js";
+import { GetWorkoutDay } from "../usecases/GetWorkoutDay.js";
 import { UpdateWorkoutDay } from "../usecases/UpdateWorkoutDay.js";
 
 export const workoutDaysRoutes: FastifyPluginAsyncZod = async (app) => {
@@ -20,6 +22,7 @@ export const workoutDaysRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:planId/days",
     {
       schema: {
+        operationId: "createWorkoutDay",
         tags: ["workout-days"],
         summary: "Adiciona um dia ao plano de treino",
         params: planParamsSchema,
@@ -56,10 +59,51 @@ export const workoutDaysRoutes: FastifyPluginAsyncZod = async (app) => {
     },
   );
 
+  app.get(
+    "/:planId/days/:dayId",
+    {
+      schema: {
+        operationId: "getWorkoutDay",
+        tags: ["workout-days"],
+        summary: "Busca um dia do plano de treino com exercícios e sessões",
+        params: dayParamsSchema,
+        response: {
+          200: getWorkoutDayResponseSchema,
+          401: errorResponseSchema,
+          404: errorResponseSchema,
+          500: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const session = await getSession(request);
+
+      if (!session) {
+        return reply
+          .status(401)
+          .send({ error: "Unauthorized", code: "UNAUTHORIZED" });
+      }
+
+      try {
+        const getWorkoutDay = new GetWorkoutDay();
+        const result = await getWorkoutDay.execute({
+          userId: session.user.id,
+          workoutPlanId: request.params.planId,
+          workoutDayId: request.params.dayId,
+        });
+
+        return result;
+      } catch (error) {
+        return sendRouteError({ app, reply, error });
+      }
+    },
+  );
+
   app.patch(
     "/:planId/days/:dayId",
     {
       schema: {
+        operationId: "updateWorkoutDay",
         tags: ["workout-days"],
         summary: "Atualiza um dia do plano de treino",
         params: dayParamsSchema,
@@ -101,6 +145,7 @@ export const workoutDaysRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:planId/days/:dayId",
     {
       schema: {
+        operationId: "deleteWorkoutDay",
         tags: ["workout-days"],
         summary: "Remove um dia do plano de treino",
         params: dayParamsSchema,

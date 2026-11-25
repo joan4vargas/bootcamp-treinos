@@ -10,6 +10,7 @@ interface InputDto {
   name?: string;
   weekDay?: WeekDay;
   isRest?: boolean;
+  coverImageUrl?: string | null;
 }
 
 interface OutputDto {
@@ -18,6 +19,8 @@ interface OutputDto {
   workoutPlanId: string;
   isRest: boolean;
   weekDay: WeekDay;
+  coverImageUrl: string | null;
+  estimatedDurationInSeconds: number;
   exercises: Array<{
     id: string;
     name: string;
@@ -60,6 +63,7 @@ export class UpdateWorkoutDay {
         name: dto.name,
         weekDay: dto.weekDay,
         isRest: dto.isRest,
+        coverImageUrl: dto.coverImageUrl,
       },
       include: workoutDayInclude,
     });

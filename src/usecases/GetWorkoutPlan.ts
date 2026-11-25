@@ -24,6 +24,8 @@ interface OutputDto {
     workoutPlanId: string;
     isRest: boolean;
     weekDay: WeekDay;
+    coverImageUrl: string | null;
+    estimatedDurationInSeconds: number;
     exercises: Array<{
       id: string;
       name: string;

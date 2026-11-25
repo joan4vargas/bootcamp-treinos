@@ -6,6 +6,7 @@ export const systemRoutes: FastifyPluginAsyncZod = async (app) => {
     "/",
     {
       schema: {
+        operationId: "getApiStatus",
         tags: ["system"],
         summary: "Verifica se a API está no ar",
         description: "Hello World",
@@ -25,6 +26,7 @@ export const systemRoutes: FastifyPluginAsyncZod = async (app) => {
     "/health",
     {
       schema: {
+        operationId: "getHealth",
         tags: ["system"],
         summary: "Healthcheck da API",
         description: "Verifica a saúde da API",
